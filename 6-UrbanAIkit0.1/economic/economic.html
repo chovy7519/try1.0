@@ -1,0 +1,912 @@
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>产业经济量化模型</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#2E7D32', secondary: '#F9A825', accent: '#1565C0',
+            neutral: '#F5F5F5', dark: '#212121',
+          },
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+        },
+      }
+    }
+  </script>
+  <style type="text/tailwindcss">
+    @layer utilities {
+      /* 页面样式 */
+      .content-auto { content-visibility: auto; }
+      .text-shadow { text-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+      .card-hover { @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1; }
+      .gradient-bg { background: linear-gradient(120deg, #2E7D32 0%, #43A047 100%); }
+      
+      /* --- 编辑器 V3 样式 --- */
+      .editor-modal { @apply fixed inset-0 z-[100] h-full w-full bg-black/50 backdrop-blur-sm hidden; }
+      .editor-panel { @apply fixed top-1/2 left-1/2 z-[101] h-[90vh] w-[90vw] max-w-5xl -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-lg bg-white shadow-2xl flex flex-col; }
+      .editor-header { @apply p-4 bg-neutral border-b font-bold text-lg flex justify-between items-center shrink-0; }
+      .editor-body { @apply p-6 overflow-y-auto flex-1 bg-white; }
+      .editor-footer { @apply p-4 bg-neutral border-t flex flex-wrap justify-between items-center gap-2 shrink-0; }
+      .editor-tab-nav { @apply border-b border-gray-200 px-6 shrink-0; }
+      .editor-tab { @apply px-4 py-2 text-gray-600 border-b-2 border-transparent font-medium; }
+      .editor-tab.active { @apply text-primary border-primary; }
+      .editor-tab-content { @apply hidden; }
+      .editor-tab-content.active { @apply block; }
+      
+      /* 表单样式 */
+      .editor-label { @apply block text-sm font-medium text-gray-700 mb-1; }
+      .editor-input { @apply w-full p-2 border border-gray-300 rounded-md shadow-sm; }
+      .editor-textarea { @apply w-full p-2 border border-gray-300 rounded-md shadow-sm font-mono text-sm; min-height: 200px; }
+      .editor-grid-2 { @apply grid grid-cols-1 md:grid-cols-2 gap-4; }
+      .editor-grid-3 { @apply grid grid-cols-1 md:grid-cols-3 gap-4; }
+
+      /* 按钮样式 */
+      .editor-btn { @apply px-4 py-2 rounded-md font-medium text-sm transition-colors; }
+      .editor-btn-primary { @apply bg-primary text-white hover:bg-primary/90; }
+      .editor-btn-secondary { @apply bg-white text-gray-700 border border-gray-300 hover:bg-gray-50; }
+      .editor-btn-success { @apply bg-green-600 text-white hover:bg-green-700; }
+      .editor-btn-warning { @apply bg-yellow-500 text-white hover:bg-yellow-600; }
+      .editor-btn-danger { @apply bg-red-600 text-white hover:bg-red-700; }
+      .editor-btn-add { @apply mt-4 editor-btn bg-green-500 text-white hover:bg-green-600; }
+
+      /* --- 动态列表项 (新) --- */
+      .editor-list-container { @apply space-y-4; }
+      .editor-list-item { @apply p-4 border rounded-lg bg-gray-50 relative; }
+      .editor-list-item-header { @apply text-lg font-semibold mb-2 text-gray-800; }
+      .editor-list-delete-btn { @apply absolute top-3 right-3 text-red-500 hover:text-red-700 text-lg; }
+    }
+  </style>
+</head>
+
+<body class="bg-neutral text-dark font-sans">
+  
+  <nav class="sticky top-0 z-50 bg-white/90 backdrop-blur-sm shadow-sm">
+    <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+      <div class="flex items-center space-x-2"><i class="fa fa-leaf text-primary text-2xl"></i><h1 id="nav-park-name" class="text-xl font-bold text-primary">[园区名称]</h1></div>
+      <div class="hidden md:flex space-x-8">
+        <a href="#overview" class="text-dark hover:text-primary transition-colors">园区概览</a>
+        <a href="#economic-model" class="text-dark hover:text-primary transition-colors">经济模型</a>
+        <a href="#development-stages" class="text-dark hover:text-primary transition-colors">发展阶段</a>
+        <a href="#industry-structure" class="text-dark hover:text-primary transition-colors">产业结构</a>
+      </div>
+    </div>
+  </nav>
+  <header class="gradient-bg text-white py-16 md:py-24">
+    <div class="container mx-auto px-4 text-center">
+      <h1 class="text-[clamp(2rem,5vw,3.5rem)] font-bold mb-6 text-shadow">产业经济量化模型与空间规划</h1>
+      <p id="hero-description" class="text-[clamp(1rem,2vw,1.25rem)] max-w-3xl mx-auto mb-8 opacity-90">[园区描述]</p>
+      <div class="flex flex-col sm:flex-row justify-center gap-4 mt-8"><a href="#industry-structure" class="bg-white text-primary px-6 py-3 rounded-full font-medium shadow-lg hover:shadow-xl transition-all"><i class="fa fa-bar-chart mr-2"></i> 交互式分析</a></div>
+    </div>
+  </header>
+  <section id="overview" class="py-16 bg-white">
+    <div class="container mx-auto px-4">
+      <div class="text-center mb-12"><h2 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-primary mb-4">园区概览</h2><div class="w-20 h-1 bg-secondary mx-auto mb-6"></div></div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div class="bg-neutral rounded-xl p-6 card-hover"><div class="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4"><i class="fa fa-map-marker text-primary text-2xl"></i></div><h3 class="text-xl font-bold mb-3" id="overview-card-1-title">[标题1]</h3><p class="text-gray-600" id="overview-card-1-text">[内容1]</p></div>
+        <div class="bg-neutral rounded-xl p-6 card-hover"><div class="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4"><i class="fa fa-area-chart text-primary text-2xl"></i></div><h3 class="text-xl font-bold mb-3" id="overview-card-2-title">[标题2]</h3><p class="text-gray-600" id="overview-card-2-text">[内容2]</p></div>
+        <div class="bg-neutral rounded-xl p-6 card-hover"><div class="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4"><i class="fa fa-tags text-primary text-2xl"></i></div><h3 class="text-xl font-bold mb-3" id="overview-card-3-title">[标题3]</h3><p class="text-gray-600" id="overview-card-3-text">[内容3]</p></div>
+      </div>
+      <div class="mt-12 bg-neutral rounded-xl p-6 md:p-8">
+        <h3 class="text-xl font-bold mb-6 text-center">园区发展目标</h3>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div class="bg-white rounded-lg p-4 text-center"><div id="total-output-goal" class="text-3xl font-bold text-primary mb-2">--</div><div class="text-gray-600">总产值（全周期）</div></div>
+          <div class="bg-white rounded-lg p-4 text-center"><div id="total-tax-goal" class="text-3xl font-bold text-primary mb-2">--</div><div class="text-gray-600">总税收（全周期）</div></div>
+          <div class="bg-white rounded-lg p-4 text-center"><div id="total-jobs-goal" class="text-3xl font-bold text-primary mb-2">--</div><div class="text-gray-600">就业带动（全周期）</div></div>
+          <div class="bg-white rounded-lg p-4 text-center"><div id="total-agglomeration-goal" class="text-3xl font-bold text-primary mb-2">--</div><div class="text-gray-600">产业集聚度（终期）</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section id="economic-model" class="py-16 bg-neutral">
+    <div class="container mx-auto px-4">
+      <div class="text-center mb-12"><h2 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-primary mb-4">产业经济量化模型</h2><div class="w-20 h-1 bg-secondary mx-auto mb-6"></div></div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+        <div class="bg-white rounded-xl p-6 md:p-8 shadow-md"><h3 class="text-xl font-bold mb-6">总产值分期对比</h3><div class="relative h-[300px]"><canvas id="outputChart"></canvas></div></div>
+        <div class="bg-white rounded-xl p-6 md:p-8 shadow-md"><h3 class="text-xl font-bold mb-6">总税收分期对比</h3><div class="relative h-[300px]"><canvas id="taxChart"></canvas></div></div>
+        <div class="bg-white rounded-xl p-6 md:p-8 shadow-md"><h3 class="text-xl font-bold mb-6">就业人数分期对比</h3><div class="relative h-[300px]"><canvas id="jobsChart"></canvas></div></div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div class="bg-white rounded-xl p-6 shadow-md"><h3 class="text-xl font-bold mb-4 flex items-center"><i class="fa fa-line-chart text-primary mr-2"></i> 产业产值预测</h3>
+          <div class="overflow-x-auto"><table class="w-full"><thead><tr class="bg-neutral"><th class="py-3 px-4 text-left">产业板块</th><th class="py-3 px-4 text-right">亩均产值(万元/亩)</th><th class="py-3 px-4 text-right">用地面积(亩)</th><th class="py-3 px-4 text-right">产值贡献(亿元)</th></tr></thead><tbody id="industry-output-tbody"></tbody></table></div>
+        </div>
+        <div class="bg-white rounded-xl p-6 shadow-md"><h3 class="text-xl font-bold mb-4 flex items-center"><i class="fa fa-pie-chart text-primary mr-2"></i> 经济效益分析</h3>
+          <div class="space-y-6">
+            <div><div class="flex justify-between mb-2"><span class="font-medium">税收贡献</span><span id="benefit-tax">--</span></div><div class="w-full bg-gray-200 rounded-full h-2.5"><div id="benefit-tax-bar" class="bg-primary h-2.5 rounded-full" style="width: 0%"></div></div></div>
+            <div><div class="flex justify-between mb-2"><span class="font-medium">就业带动</span><span id="benefit-jobs">--</span></div><div class="w-full bg-gray-200 rounded-full h-2.5"><div id="benefit-jobs-bar" class="bg-secondary h-2.5 rounded-full" style="width: 0%"></div></div></div>
+            <div><div class="flex justify-between mb-2"><span class="font-medium">产业集聚度</span><span id="benefit-agglom">--</span></div><div class="w-full bg-gray-200 rounded-full h-2.5"><div id="benefit-agglom-bar" class="bg-accent h-2.5 rounded-full" style="width: 0%"></div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section id="development-stages" class="py-16 bg-white">
+    <div class="container mx-auto px-4">
+      <div class="text-center mb-12"><h2 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-primary mb-4">梯度发展模型</h2><div class="w-20 h-1 bg-secondary mx-auto mb-6"></div></div>
+      <div class="relative"><div class="hidden md:block absolute left-1/2 transform -translate-x-1/2 h-full w-1 bg-primary/20"></div><div id="development-stages-container" class="space-y-12"></div></div>
+    </div>
+  </section>
+  <section id="industry-system" class="py-16 bg-white">
+    <div class="container mx-auto px-4">
+      <div class="text-center mb-12"><h2 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-primary mb-4">产业体系</h2><div class="w-20 h-1 bg-secondary mx-auto mb-6"></div></div>
+      <div id="industry-sunburst" style="width:100%;height:500px;"></div>
+    </div>
+  </section>
+  <section id="industry-structure" class="py-16 bg-neutral">
+    <div class="container mx-auto px-4">
+      <div class="text-center mb-12"><h2 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-primary mb-4">产业构成与用地占比</h2><div class="w-20 h-1 bg-secondary mx-auto mb-6"></div></div>
+      <div class="bg-white rounded-xl p-6 md:p-8 shadow-md mb-12">
+        <h3 class="text-xl font-bold mb-6">最终期（<span id="total-area-title">--</span>亩）产业用地占比 - 交互式调整</h3>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+          <div class="lg:col-span-7 flex flex-col justify-between">
+            <div class="flex-1 min-h-[420px]"><div id="land-use-treemap" style="width:100%;height:100%;min-height:420px;"></div></div>
+            <div class="mt-4"><div id="total-percentage-indicator" class="text-center text-sm font-medium p-2 rounded-lg bg-gray-100">当前总占比：<span id="total-percentage-value" class="font-bold text-primary">100%</span></div></div>
+            <div id="land-use-legend" class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3"></div>
+          </div>
+          <div class="lg:col-span-5 flex flex-col justify-between">
+            <div><h4 class="font-bold mb-4">产业用地比例调整</h4><div id="land-use-slider-container" class="space-y-4"></div></div>
+            <div class="mt-6"><button id="reset-land-use" class="w-full bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"><i class="fa fa-refresh mr-2"></i> 重置为默认比例</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <footer class="bg-dark text-white py-12">
+    <div class="container mx-auto px-4">
+      <div class="flex flex-col items-center text-center space-y-8">
+        <div><h3 id="footer-park-name" class="text-lg font-bold mb-4">[园区名称]</h3><p class="text-gray-400" id="footer-tagline">[园区标语]</p></div>
+      </div>
+      <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-500"><p id="footer-copyright">© 2025 [版权所有] 保留所有权利.</p></div>
+    </div>
+  </footer>
+
+  <button id="open-editor-btn" title="配置参数"
+    class="fixed bottom-6 right-6 z-[90] h-14 w-14 rounded-full bg-primary text-white shadow-lg text-2xl flex items-center justify-center transition-transform hover:scale-110">
+    <i class="fa fa-cog"></i>
+  </button>
+
+  <div id="editor-modal" class="editor-modal">
+    <div class="editor-panel">
+      <div class="editor-header">
+        <span><i class="fa fa-cogs mr-2"></i>实时参数编辑器</span>
+        <button id="close-editor-btn" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+      </div>
+      <div class="editor-tab-nav">
+        <nav class="flex -mb-px">
+          <button class="editor-tab active" data-tab="basic">基础设置</button>
+          <button class="editor-tab" data-tab="overview">概览卡片</button>
+          <button class="editor-tab" data-tab="stages">发展阶段</button>
+          <button class="editor-tab" data-tab="industries">产业板块</button>
+          <button class="editor-tab" data-tab="advanced">高级(旭日图)</button>
+        </nav>
+      </div>
+      <div class="editor-body">
+        <div id="tab-content-basic" class="editor-tab-content active space-y-4">
+          <div class="editor-grid-2">
+            <div><label for="edit-parkName" class="editor-label">园区名称</label><input type="text" id="edit-parkName" class="editor-input"></div>
+            <div><label for="edit-totalAreaAcres" class="editor-label">总用地面积 (亩)</label><input type="number" id="edit-totalAreaAcres" class="editor-input"></div>
+          </div>
+          <div><label for="edit-heroDescription" class="editor-label">首页描述</label><textarea id="edit-heroDescription" rows="3" class="editor-textarea"></textarea></div>
+          <hr class="my-4">
+          <h4 class="font-medium text-lg">经济系数</h4>
+          <div class="editor-grid-3">
+            <div><label for="edit-taxRate" class="editor-label">税收系数 (例如: 0.071)</label><input type="number" step="0.001" id="edit-taxRate" class="editor-input"></div>
+            <div><label for="edit-jobFactor" class="editor-label">生产就业系数 (产值/100万 * N人)</label><input type="number" step="0.1" id="edit-jobFactor" class="editor-input"></div>
+            <div><label for="edit-supportJobFactor" class="editor-label">配套就业系数 (人/亩)</label><input type="number" step="0.1" id="edit-supportJobFactor" class="editor-input"></div>
+          </div>
+          <hr class="my-4">
+          <h4 class="font-medium text-lg">页脚</h4>
+          <div class="editor-grid-2">
+             <div><label for="edit-footer-tagline" class="editor-label">页脚标语</label><input type="text" id="edit-footer-tagline" class="editor-input"></div>
+             <div><label for="edit-footer-copyright" class="editor-label">页脚版权</label><input type="text" id="edit-footer-copyright" class="editor-input"></div>
+          </div>
+        </div>
+        <div id="tab-content-overview" class="editor-tab-content">
+          <p class="text-sm text-gray-600 mb-4">管理“园区概览”部分显示的三个卡片。</p>
+          <div id="editor-overview-container" class="editor-list-container"></div>
+        </div>
+        <div id="tab-content-stages" class="editor-tab-content">
+          <p class="text-sm text-gray-600 mb-4">管理“梯度发展模型”时间轴。您可以添加或删除阶段。</p>
+          <div id="editor-stages-container" class="editor-list-container"></div>
+          <button id="editor-add-stage" class="editor-btn-add"><i class="fa fa-plus mr-1"></i> 添加新阶段</button>
+        </div>
+        <div id="tab-content-industries" class="editor-tab-content">
+          <p class="text-sm text-gray-600 mb-4">管理核心的“产业板块”。这是所有经济测算的基础。</p>
+          <div id="editor-industries-container" class="editor-list-container"></div>
+          <button id="editor-add-industry" class="editor-btn-add"><i class="fa fa-plus mr-1"></i> 添加新产业</button>
+        </div>
+        <div id="tab-content-advanced" class="editor-tab-content space-y-4">
+          <p class="text-sm text-yellow-700 bg-yellow-100 p-3 rounded-md"><i class="fa fa-warning mr-1"></i> <strong>警告:</strong> 此处仅用于编辑“产业体系”旭日图的子项。键名 (如 "grain-processing") 必须与“产业板块”中设置的 `key` 严格一致。</p>
+          <div><label for="edit-industryChildren" class="editor-label">产业体系 (JSON 对象)</label><textarea id="edit-industryChildren" rows="20" class="editor-textarea"></textarea></div>
+        </div>
+      </div>
+      <div class="editor-footer">
+        <div class="flex-1 flex flex-wrap gap-2">
+          <button id="editor-apply" class="editor-btn editor-btn-primary"><i class="fa fa-check mr-1"></i> 应用更改</button>
+          <button id="editor-save-local" class="editor-btn editor-btn-success"><i class="fa fa-save mr-1"></i> 保存到浏览器</button>
+          <button id="editor-load-local" class="editor-btn editor-btn-secondary"><i class="fa fa-upload mr-1"></i> 加载已存配置</button>
+          <button id="editor-reset-default" class="editor-btn editor-btn-danger"><i class="fa fa-trash mr-1"></i> 重置为默认</button>
+        </div>
+        <button id="editor-close-footer" class="editor-btn editor-btn-secondary">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+
+  <script>
+    // 确保 'projectConfig' 已经从 config.js 加载
+    if (typeof projectConfig === 'undefined') {
+      alert('错误：未能加载 config.js 配置文件。请确保该文件与 index.html 在同一目录下。');
+    }
+
+    // 深度复制一份默认配置，用于“重置”
+    const defaultConfig = JSON.parse(JSON.stringify(projectConfig));
+    // 在内存中维护一个可变的当前配置
+    let currentConfig = JSON.parse(JSON.stringify(projectConfig));
+    const LOCAL_STORAGE_KEY = 'parkModelConfig_v3';
+
+    // 全局图表实例
+    let outputChart, taxChart, jobsChart;
+    let landUseTreemapInstance, industrySunburstInstance;
+
+    // ========================================================================
+    // === 核心渲染引擎 (已封装) ===
+    // ========================================================================
+    function runAllRenders(config) {
+      if (!config) { alert('配置对象无效!'); return; }
+      try {
+        // 1. 清理工作
+        if (landUseTreemapInstance) { landUseTreemapInstance.dispose(); landUseTreemapInstance = null; }
+        if (industrySunburstInstance) { industrySunburstInstance.dispose(); industrySunburstInstance = null; }
+        if (outputChart) outputChart.destroy();
+        if (taxChart) taxChart.destroy();
+        if (jobsChart) jobsChart.destroy();
+        
+        document.getElementById('land-use-slider-container').innerHTML = '';
+        document.getElementById('land-use-legend').innerHTML = '';
+        document.getElementById('development-stages-container').innerHTML = '';
+        document.getElementById('industry-output-tbody').innerHTML = '';
+        
+        // 2. 初始化
+        initializePageText(config);
+        generateLandUseSliders(config);
+        initializeDevelopmentStages(config);
+        initializeSliderEvents(config);
+        
+        // 3. 渲染图表
+        renderLandUseTreemap(config);
+        renderIndustrySunburst(config);
+        
+        // 4. 首次计算
+        renderIndustryOutputTable(config);
+      } catch (error) {
+        console.error("渲染页面时出错: ", error);
+        alert(`渲染失败！请检查您的配置。\n\n错误信息: ${error.message}`);
+      }
+    }
+
+    // ==========================
+    // === 1. 页面渲染函数 (Page Rendering) ===
+    // ==========================
+    function initializePageText(config) {
+      document.title = `${config.parkName} | 产业经济量化模型`;
+      document.getElementById('nav-park-name').textContent = config.parkName;
+      document.getElementById('hero-description').textContent = config.heroDescription;
+      document.getElementById('footer-park-name').textContent = config.parkName;
+      document.getElementById('footer-tagline').textContent = config.footer.tagline;
+      document.getElementById('footer-copyright').textContent = config.footer.copyright;
+      document.getElementById('overview-card-1-title').textContent = config.overviewCards[0].title;
+      document.getElementById('overview-card-1-text').textContent = config.overviewCards[0].text;
+      document.getElementById('overview-card-2-title').textContent = config.overviewCards[1].title;
+      document.getElementById('overview-card-2-text').textContent = config.overviewCards[1].text;
+      document.getElementById('overview-card-3-title').textContent = config.overviewCards[2].title;
+      document.getElementById('overview-card-3-text').textContent = config.overviewCards[2].text;
+      document.getElementById('total-area-title').textContent = config.totalAreaAcres;
+    }
+
+    function generateLandUseSliders(config) {
+      const sliderContainer = document.getElementById('land-use-slider-container');
+      const legendContainer = document.getElementById('land-use-legend');
+      let sliderHtml = '';
+      let legendHtml = '';
+      config.industries.forEach(ind => {
+        const area = Math.round(ind.percent * config.totalAreaAcres / 100);
+        sliderHtml += `<div class="bg-gray-50 p-4 rounded-lg">
+            <div class="flex justify-between items-center mb-2"><div class="flex items-center"><div class="w-4 h-4 rounded-full" style="background-color: ${ind.color}"></div><span class="font-medium ml-2">${ind.name}</span></div><span id="${ind.key}-percent" class="text-sm font-bold">${ind.percent}%</span></div>
+            <input type="range" id="${ind.key}-slider" min="0" max="100" value="${ind.percent}" step="1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" style="--slider-thumb-color: ${ind.color};">
+            <div class="mt-2 text-sm text-gray-600"><span id="${ind.key}-area">${area}</span>亩，${ind.description}</div></div>`;
+        legendHtml += `<div class="flex items-center"><div class="w-4 h-4 rounded-full mr-2" style="background-color: ${ind.color};"></div><span class="text-sm">${ind.name}</span></div>`;
+      });
+      sliderContainer.innerHTML = sliderHtml;
+      legendContainer.innerHTML = legendHtml;
+      const styleSheet = document.createElement("style");
+      styleSheet.innerText = config.industries.map(ind => `input[type="range"]#${ind.key}-slider::-webkit-slider-thumb { background: ${ind.color}; } input[type="range"]#${ind.key}-slider::-moz-range-thumb { background: ${ind.color}; }`).join(' ');
+      document.head.appendChild(styleSheet);
+    }
+
+    function initializeDevelopmentStages(config) {
+      const container = document.getElementById('development-stages-container');
+      let html = '';
+      const totalArea = config.totalAreaAcres;
+      config.developmentStages.forEach((stage, index) => {
+        const isOdd = index % 2 === 1;
+        const areaRatio = stage.areaAcres / totalArea;
+        html += `<div class="flex flex-col md:flex-row items-center">
+            <div class="md:w-1/2 md:pr-12 ${isOdd ? 'order-2 md:order-2' : 'order-1 md:order-1 md:text-right'} mb-6 md:mb-0">
+              <h3 class="text-xl font-bold mb-2">${stage.name} (<span id="stage-area-${index}">${stage.areaAcres}</span>亩，${stage.years})</h3>
+              <p class="text-gray-600 mb-4">${stage.description}</p>
+              <div class="mt-4"><span class="inline-block px-3 py-1 bg-primary/10 text-primary rounded-full text-sm mr-2">${stage.title}</span><span class="inline-block px-3 py-1 bg-secondary/10 text-secondary rounded-full text-sm">重点：${stage.focus}</span></div>
+            </div>
+            <div class="hidden md:block absolute left-1/2 transform -translate-x-1/2"><div class="w-8 h-8 rounded-full bg-${stage.color} flex items-center justify-center text-white"><i class="fa ${stage.icon}"></i></div></div>
+            <div class="md:w-1/2 md:pl-12 ${isOdd ? 'order-1 md:order-1' : 'order-2 md:order-2'}">
+              <div class="bg-neutral rounded-xl p-6 shadow-md"><h4 class="font-bold mb-3">发展目标 (该阶段)</h4>
+                <ul class="space-y-2">
+                  <li class="flex items-start"><i class="fa fa-check text-primary mt-1 mr-2"></i><span>实现年产值<span id="stage-output-${index}" data-ratio="${areaRatio}">--</span>亿元，税收<span id="stage-tax-${index}" data-ratio="${areaRatio}">--</span>亿元</span></li>
+                  <li class="flex items-start"><i class="fa fa-check text-primary mt-1 mr-2"></i><span>带动就业<span id="stage-jobs-${index}" data-ratio="${areaRatio}">--</span>人</span></li>
+                </ul>
+              </div>
+            </div>
+          </div>`;
+      });
+      container.innerHTML = html;
+    }
+
+    function initializeSliderEvents(config) {
+      let initialPercentages = {};
+
+      config.industries.forEach(ind => {
+        const slider = document.getElementById(`${ind.key}-slider`);
+        if (!slider) return;
+
+        // 1. 在拖动开始时，快照所有产业的当前百分比
+        slider.addEventListener('mousedown', () => {
+          initialPercentages = config.industries.reduce((acc, i) => {
+            acc[i.key] = i.percent;
+            return acc;
+          }, {});
+        });
+
+        // 2. 拖动过程中，调用新的处理函数
+        slider.addEventListener('input', () => {
+          handleSliderInput(config, ind.key, parseFloat(slider.value), initialPercentages);
+        });
+      });
+
+      document.getElementById('reset-land-use').addEventListener('click', function () {
+        currentConfig = JSON.parse(JSON.stringify(defaultConfig));
+        runAllRenders(currentConfig);
+        this.classList.add('animate-pulse');
+        setTimeout(() => this.classList.remove('animate-pulse'), 1000);
+      });
+    }
+
+    // 新增：滑块交互的核心逻辑
+    function handleSliderInput(config, activeKey, newPercentage, initialPercentages) {
+      const delta = newPercentage - initialPercentages[activeKey];
+      const otherIndustries = config.industries.filter(i => i.key !== activeKey);
+      const totalOtherPercentage = otherIndustries.reduce((sum, i) => sum + initialPercentages[i.key], 0);
+      
+      let remainingDelta = delta;
+      
+      // 按比例分配差值给其他产业
+      otherIndustries.forEach(ind => {
+        const initial = initialPercentages[ind.key];
+        const proportion = totalOtherPercentage > 0 ? initial / totalOtherPercentage : 1 / otherIndustries.length;
+        const change = delta * proportion;
+        ind.percent = Math.max(0, Math.min(100, initial - change));
+      });
+
+      // 设置当前活动滑块的产业百分比
+      const activeIndustry = config.industries.find(i => i.key === activeKey);
+      activeIndustry.percent = newPercentage;
+
+      // 归一化，确保总和为 100%
+      const currentTotal = config.industries.reduce((sum, i) => sum + i.percent, 0);
+      const normalizationFactor = 100 / currentTotal;
+
+      config.industries.forEach(ind => {
+        ind.percent *= normalizationFactor;
+      });
+
+      // 更新所有滑块和显示
+      config.industries.forEach(ind => {
+        updateSliderDisplay(config, ind.key, ind.percent);
+        const slider = document.getElementById(`${ind.key}-slider`);
+        if (slider) {
+          slider.value = ind.percent;
+        }
+      });
+
+      // 重新渲染表格和图表
+      renderIndustryOutputTable(config);
+      renderLandUseTreemap(config);
+    }
+
+    // ======================================
+    // === 2. 核心计算与更新 (Core Calculation) ===
+    // ======================================
+    function renderIndustryOutputTable(config) {
+      const tbody = document.getElementById('industry-output-tbody');
+      const totalArea = config.totalAreaAcres;
+      let totalOutput = 0, totalAreaSum = 0, totalJobs = 0;
+      let tbodyHtml = '';
+      config.industries.forEach(ind => {
+        // Read percent from the config object, not from the DOM
+        const percent = ind.percent;
+        const area = Math.round(totalArea * percent / 100);
+        const output = ind.outputPerAcre > 0 ? (area * ind.outputPerAcre / 10000) : 0;
+        const outputDisplay = ind.outputPerAcre > 0 ? output.toFixed(2) : '-';
+        let jobsPerAcre = 0;
+        if (ind.outputPerAcre > 0) { jobsPerAcre = (ind.outputPerAcre / 100) * config.economicFactors.jobFactor; } 
+        else if (ind.key.includes('research') || ind.key.includes('support')) { jobsPerAcre = config.economicFactors.supportJobFactor; }
+        const jobs = area * jobsPerAcre;
+        totalAreaSum += area; totalOutput += output; totalJobs += jobs;
+        tbodyHtml += `<tr class="border-b"><td class="py-3 px-4">${ind.name}</td><td class="py-3 px-4 text-right">${ind.outputPerAcre > 0 ? ind.outputPerAcre : '-'}</td><td class="py-3 px-4 text-right">${area}</td><td class="py-3 px-4 text-right font-medium">${outputDisplay}</td></tr>`;
+      });
+      const totalTax = totalOutput * config.economicFactors.taxRate;
+      tbodyHtml += `<tr><td class="py-3 px-4 font-bold">合计</td><td class="py-3 px-4 text-right">-</td><td class="py-3 px-4 text-right font-bold">${totalAreaSum}</td><td class="py-3 px-4 text-right font-bold text-primary">${totalOutput.toFixed(2)}</td></tr>`;
+      tbody.innerHTML = tbodyHtml;
+      const totals = { totalOutput, totalTax, totalJobs: Math.round(totalJobs) };
+      updateOverviewGoals(config, totals);
+      updateBenefitMetrics(config, totals);
+      updateStageCharts(config, totals);
+      updateDevelopmentStagesText(config, totals);
+    }
+    function updateSliderDisplay(config, industryKey, sliderValue) {
+      const percent = parseFloat(sliderValue);
+      const area = Math.round(percent * config.totalAreaAcres / 100);
+      document.getElementById(`${industryKey}-percent`).textContent = `${percent.toFixed(0)}%`;
+      document.getElementById(`${industryKey}-area`).textContent = area;
+      updateTotalPercentage(config);
+    }
+    function updateTotalPercentage(config) {
+      const totalElement = document.getElementById('total-percentage-value');
+      const indicatorElement = document.getElementById('total-percentage-indicator');
+      totalElement.textContent = '100%';
+      indicatorElement.className = 'text-center text-sm font-medium p-2 rounded-lg bg-green-100 border border-green-300';
+      totalElement.className = 'font-bold text-green-600';
+    }
+    function updateOverviewGoals(config, totals) {
+      document.getElementById('total-output-goal').textContent = `${totals.totalOutput.toFixed(2)}亿`;
+      document.getElementById('total-tax-goal').textContent = `${totals.totalTax.toFixed(2)}亿`;
+      document.getElementById('total-jobs-goal').textContent = `${totals.totalJobs.toLocaleString()}人`;
+      const agglomValue = (1.1 + (totals.totalOutput / 100) * 0.05).toFixed(2);
+      document.getElementById('total-agglomeration-goal').textContent = agglomValue;
+    }
+    function updateBenefitMetrics(config, totals) {
+      document.getElementById('benefit-tax').textContent = `${totals.totalTax.toFixed(2)}亿元`;
+      document.getElementById('benefit-tax-bar').style.width = Math.min(100, (totals.totalTax / (config.economicFactors.taxTarget || 5)) * 100) + '%';
+      document.getElementById('benefit-jobs').textContent = `${totals.totalJobs.toLocaleString()}人`;
+      document.getElementById('benefit-jobs-bar').style.width = Math.min(100, (totals.totalJobs / (config.economicFactors.jobTarget || 6000)) * 100) + '%';
+      const agglomValue = (1.1 + (totals.totalOutput / 100) * 0.05).toFixed(2);
+      document.getElementById('benefit-agglom').textContent = agglomValue;
+      document.getElementById('benefit-agglom-bar').style.width = Math.min(100, (parseFloat(agglomValue) / 1.5) * 100) + '%';
+    }
+    function updateDevelopmentStagesText(config, totals) {
+      config.developmentStages.forEach((stage, index) => {
+        const ratio = stage.areaAcres / config.totalAreaAcres;
+        document.getElementById(`stage-output-${index}`).textContent = (totals.totalOutput * ratio).toFixed(2);
+        document.getElementById(`stage-tax-${index}`).textContent = (totals.totalTax * ratio).toFixed(2);
+        document.getElementById(`stage-jobs-${index}`).textContent = Math.round(totals.totalJobs * ratio).toLocaleString();
+      });
+    }
+
+    // ==========================
+    // === 3. 图表渲染 (Chart Renders) ===
+    // ==========================
+    function createOrUpdateBarChart(ctx, label, data, labels, color, borderColor) {
+        return new Chart(ctx, {
+          type: 'bar', data: { labels: labels, datasets: [{ label: label, data: data, backgroundColor: color, borderColor: borderColor, borderWidth: 1 }] },
+          options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+        });
+    }
+    function updateStageCharts(config, totals) {
+      let cumulativeOutput = 0, cumulativeTax = 0, cumulativeJobs = 0;
+      const outputData = [], taxData = [], jobsData = [];
+      const labels = config.developmentStages.map(s => s.name);
+      config.developmentStages.forEach(stage => {
+        const ratio = stage.areaAcres / config.totalAreaAcres;
+        cumulativeOutput += totals.totalOutput * ratio;
+        cumulativeTax += totals.totalTax * ratio;
+        cumulativeJobs += totals.totalJobs * ratio;
+        outputData.push(cumulativeOutput.toFixed(2));
+        taxData.push(cumulativeTax.toFixed(2));
+        jobsData.push(Math.round(cumulativeJobs));
+      });
+      outputChart = createOrUpdateBarChart(document.getElementById('outputChart').getContext('2d'), '累计产值(亿元)', outputData, labels, 'rgba(46, 125, 50, 0.7)', 'rgba(46, 125, 50, 1)');
+      taxChart = createOrUpdateBarChart(document.getElementById('taxChart').getContext('2d'), '累计税收(亿元)', taxData, labels, 'rgba(249, 168, 37, 0.7)', 'rgba(249, 168, 37, 1)');
+      jobsChart = createOrUpdateBarChart(document.getElementById('jobsChart').getContext('2d'), '累计就业(人)', jobsData, labels, 'rgba(21, 101, 192, 0.7)', 'rgba(21, 101, 192, 1)');
+    }
+
+    // ========== 修复点 1 ==========
+    function renderLandUseTreemap(config) {
+      const treemapData = config.industries.map(ind => {
+        // Read percent from the config object
+        const percent = ind.percent;
+        return { name: ind.name, value: Math.round(percent * config.totalAreaAcres / 100), percent: percent, itemStyle: { color: ind.color } };
+      });
+      const chartDom = document.getElementById('land-use-treemap');
+
+      // 修复：检查实例是否存在，不存在才创建
+      if (!landUseTreemapInstance) {
+        landUseTreemapInstance = echarts.init(chartDom);
+        // 修复：只在创建时绑定一次resize
+        window.addEventListener('resize', () => { 
+          if (landUseTreemapInstance && !landUseTreemapInstance.isDisposed()) {
+            landUseTreemapInstance.resize(); 
+          }
+        });
+      }
+      
+      const option = {
+        tooltip: { formatter: p => `<b>${p.data.name}</b><br>面积：${p.data.value}亩<br>占比：${p.data.percent.toFixed(1)}%` },
+        series: [{
+          type: 'treemap', data: treemapData,
+          label: { show: true, formatter: p => `${p.data.name}\n${p.data.percent.toFixed(1)}%`, fontWeight: 'bold', color: '#fff', fontSize: 14, align: 'center', verticalAlign: 'middle', textShadowColor: 'rgba(0, 0, 0, 0.5)', textShadowBlur: 2 },
+          upperLabel: { show: false }, itemStyle: { borderColor: '#fff', borderWidth: 2, borderRadius: 8, gapWidth: 4 }, breadcrumb: { show: false }, roam: false
+        }],
+      };
+      // 始终更新数据
+      landUseTreemapInstance.setOption(option, true);
+    }
+
+    // ========== 修复点 2 ==========
+    function renderIndustrySunburst(config) {
+      const sunburstData = config.industries.map(ind => ({
+        name: ind.name,
+        itemStyle: { color: ind.color },
+        children: config.industryChildren[ind.key] || [{ name: 'N/A', value: 1 }]
+      }));
+      const chartDom = document.getElementById('industry-sunburst');
+      
+      // 修复：检查实例是否存在，不存在才创建
+      if (!industrySunburstInstance) {
+        industrySunburstInstance = echarts.init(chartDom);
+        // 修复：只在创建时绑定一次resize
+        window.addEventListener('resize', () => { 
+          if (industrySunburstInstance && !industrySunburstInstance.isDisposed()) {
+            industrySunburstInstance.resize(); 
+          }
+        });
+      }
+      
+      const option = {
+        title: { text: '园区产业体系分层结构', left: 'center', top: 10 },
+        series: {
+          type: 'sunburst', data: sunburstData, radius: [0, '90%'], sort: undefined,
+          emphasis: { focus: 'ancestor' },
+          levels: [ {}, { r0: '15%', r: '35%', label: { rotate: 'tangential' } }, { r0: '35%', r: '70%', label: { align: 'right' } } ]
+        }
+      };
+      // 始终更新数据
+      industrySunburstInstance.setOption(option, true);
+    }
+
+    // ======================================
+    // === 4. 实时编辑器 V3 逻辑 (Editor Logic) ===
+    // ======================================
+    
+    // --- 元素 ---
+    const modal = document.getElementById('editor-modal');
+    const openBtn = document.getElementById('open-editor-btn');
+    const closeBtn = document.getElementById('close-editor-btn');
+    const closeBtnFooter = document.getElementById('editor-close-footer');
+    const tabs = document.querySelectorAll('.editor-tab');
+    const tabContents = document.querySelectorAll('.editor-tab-content');
+    
+    // --- 事件绑定 ---
+    openBtn.addEventListener('click', openEditor);
+    closeBtn.addEventListener('click', closeEditor);
+    closeBtnFooter.addEventListener('click', closeEditor);
+    
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        const target = tab.getAttribute('data-tab');
+        tabs.forEach(t => t.classList.remove('active'));
+        tabContents.forEach(c => c.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(`tab-content-${target}`).classList.add('active');
+      });
+    });
+
+    document.getElementById('editor-apply').addEventListener('click', applyEditorChanges);
+    document.getElementById('editor-save-local').addEventListener('click', saveConfigToLocal);
+    document.getElementById('editor-load-local').addEventListener('click', loadConfigFromLocal);
+    document.getElementById('editor-reset-default').addEventListener('click', resetConfigToDefault);
+
+    // --- 编辑器核心功能 ---
+    function openEditor() {
+      loadConfigIntoEditor(currentConfig); // 载入当前配置到表单
+      modal.style.display = 'block';
+    }
+    function closeEditor() { modal.style.display = 'none'; }
+
+    function loadConfigIntoEditor(config) {
+      // 1. 基础设置
+      document.getElementById('edit-parkName').value = config.parkName;
+      document.getElementById('edit-heroDescription').value = config.heroDescription;
+      document.getElementById('edit-totalAreaAcres').value = config.totalAreaAcres;
+      document.getElementById('edit-taxRate').value = config.economicFactors.taxRate;
+      document.getElementById('edit-jobFactor').value = config.economicFactors.jobFactor;
+      document.getElementById('edit-supportJobFactor').value = config.economicFactors.supportJobFactor;
+      document.getElementById('edit-footer-tagline').value = config.footer.tagline;
+      document.getElementById('edit-footer-copyright').value = config.footer.copyright;
+      // 2. 概览卡片 (固定3个)
+      const overviewContainer = document.getElementById('editor-overview-container');
+      overviewContainer.innerHTML = '';
+      config.overviewCards.forEach((card, index) => {
+        overviewContainer.innerHTML += `
+          <div class="editor-list-item" data-index="${index}">
+            <h3 class="editor-list-item-header">卡片 ${index + 1}</h3>
+            <div class="space-y-2">
+              <div><label class="editor-label">标题 (title)</label><input type="text" class="editor-input" data-key="title" value="${card.title}"></div>
+              <div><label class="editor-label">内容 (text)</label><textarea rows="3" class="editor-input" data-key="text">${card.text}</textarea></div>
+            </div>
+          </div>`;
+      });
+      // 3. 发展阶段 (动态列表)
+      renderEditorList_Stages(config.developmentStages);
+      // 4. 产业板块 (动态列表)
+      renderEditorList_Industries(config.industries);
+      // 5. 高级 (旭日图)
+      document.getElementById('edit-industryChildren').value = JSON.stringify(config.industryChildren, null, 2);
+    }
+    
+    function applyEditorChanges() {
+      try {
+        const newConfig = scrapeConfigFromEditor(); // 从表单刮取数据
+        // 验证
+        if (newConfig.industries.length === 0) throw new Error("产业板块不能为空");
+        if (newConfig.developmentStages.length === 0) throw new Error("发展阶段不能为空");
+        // 成功，更新 currentConfig
+        currentConfig = newConfig;
+        runAllRenders(currentConfig); // 重绘页面
+        closeEditor();
+        showToast('应用成功！页面已更新。', 'success');
+      } catch (error) {
+        console.error("解析编辑器数据时出错: ", error);
+        alert(`应用失败！\n请检查所有表单项和“高级”中的JSON格式。\n\n错误信息: ${error.message}`);
+      }
+    }
+    
+    // --- 发展阶段 (Stages) 编辑器 ---
+    function renderEditorList_Stages(stages) {
+      const container = document.getElementById('editor-stages-container');
+      container.innerHTML = ''; // 清空
+      stages.forEach((stage, index) => {
+        container.innerHTML += `
+          <div class="editor-list-item" data-index="${index}">
+            <button class="editor-list-delete-btn" data-type="stage" title="删除此阶段">&times;</button>
+            <h3 class="editor-list-item-header">阶段 ${index + 1}: ${stage.name || '新阶段'}</h3>
+            <div class="editor-grid-3">
+              <div><label class="editor-label">阶段名称 (name)</label><input type="text" class="editor-input" data-key="name" value="${stage.name}"></div>
+              <div><label class="editor-label">该阶段面积 (areaAcres)</label><input type="number" class="editor-input" data-key="areaAcres" value="${stage.areaAcres}"></div>
+              <div><label class="editor-label">年份 (years)</label><input type="text" class="editor-input" data-key="years" value="${stage.years}"></div>
+              <div><label class="editor-label">阶段标题 (title)</label><input type="text" class="editor-input" data-key="title" value="${stage.title}"></div>
+              <div><label class="editor-label">重点 (focus)</label><input type="text" class="editor-input" data-key="focus" value="${stage.focus}"></div>
+              <div><label class="editor-label">图标 (icon)</label><input type="text" class="editor-input" data-key="icon" value="${stage.icon}"></div>
+              <div><label class="editor-label">颜色 (color)</label><input type="text" class="editor-input" data-key="color" value="${stage.color}"></div>
+            </div>
+            <div><label class="editor-label">描述 (description)</label><textarea rows="2" class="editor-input" data-key="description">${stage.description}</textarea></div>
+          </div>`;
+      });
+      // 重新绑定删除事件 (因为是动态内容)
+      document.querySelectorAll('.editor-list-delete-btn[data-type="stage"]').forEach(btn => {
+          btn.onclick = () => btn.closest('.editor-list-item').remove();
+      });
+    }
+    document.getElementById('editor-add-stage').addEventListener('click', () => {
+      const newStage = { name: "新阶段", areaAcres: 0, years: "XXXX-XXXX", title: "新标题", focus: "新重点", description: "新描述", icon: "fa-star", color: "accent" };
+      const container = document.getElementById('editor-stages-container');
+      const newIndex = container.children.length;
+      const newItem = document.createElement('div');
+      newItem.className = 'editor-list-item';
+      newItem.setAttribute('data-index', newIndex);
+      newItem.innerHTML = `
+          <button class="editor-list-delete-btn" data-type="stage" title="删除此阶段">&times;</button>
+          <h3 class="editor-list-item-header">阶段 ${newIndex + 1}: 新阶段</h3>
+          <div class="editor-grid-3">
+            <div><label class="editor-label">阶段名称 (name)</label><input type="text" class="editor-input" data-key="name" value="${newStage.name}"></div>
+            <div><label class="editor-label">该阶段面积 (areaAcres)</label><input type="number" class="editor-input" data-key="areaAcres" value="${newStage.areaAcres}"></div>
+            <div><label class="editor-label">年份 (years)</label><input type="text" class="editor-input" data-key="years" value="${newStage.years}"></div>
+            <div><label class="editor-label">阶段标题 (title)</label><input type="text" class="editor-input" data-key="title" value="${newStage.title}"></div>
+            <div><label class="editor-label">重点 (focus)</label><input type="text" class="editor-input" data-key="focus" value="${newStage.focus}"></div>
+            <div><label class="editor-label">图标 (icon)</label><input type="text" class="editor-input" data-key="icon" value="${newStage.icon}"></div>
+            <div><label class="editor-label">颜色 (color)</label><input type="text" class="editor-input" data-key="color" value="${newStage.color}"></div>
+          </div>
+          <div><label class="editor-label">描述 (description)</label><textarea rows="2" class="editor-input" data-key="description">${newStage.description}</textarea></div>`;
+      // 绑定新按钮的删除事件
+      newItem.querySelector('.editor-list-delete-btn').onclick = () => newItem.remove();
+      container.appendChild(newItem);
+    });
+    function scrapeEditorList_Stages() {
+      const list = [];
+      document.querySelectorAll('#editor-stages-container .editor-list-item').forEach(item => {
+        list.push({
+          name: item.querySelector('[data-key="name"]').value,
+          areaAcres: parseFloat(item.querySelector('[data-key="areaAcres"]').value),
+          years: item.querySelector('[data-key="years"]').value,
+          title: item.querySelector('[data-key="title"]').value,
+          focus: item.querySelector('[data-key="focus"]').value,
+          description: item.querySelector('[data-key="description"]').value,
+          icon: item.querySelector('[data-key="icon"]').value,
+          color: item.querySelector('[data-key="color"]').value,
+        });
+      });
+      return list;
+    }
+
+    // --- 产业板块 (Industries) 编辑器 ---
+    function renderEditorList_Industries(industries) {
+      const container = document.getElementById('editor-industries-container');
+      container.innerHTML = ''; // 清空
+      industries.forEach((ind, index) => {
+        container.innerHTML += `
+          <div class="editor-list-item" data-index="${index}">
+            <button class="editor-list-delete-btn" data-type="industry" title="删除此产业">&times;</button>
+            <h3 class="editor-list-item-header">${ind.name || '新产业'}</h3>
+            <div class="editor-grid-3">
+              <div><label class="editor-label">Key (唯一ID, 英文)</label><input type="text" class="editor-input" data-key="key" value="${ind.key}"></div>
+              <div><label class="editor-label">名称 (name)</label><input type="text" class="editor-input" data-key="name" value="${ind.name}"></div>
+              <div><label class="editor-label">默认百分比 (percent)</label><input type="number" class="editor-input" data-key="percent" value="${ind.percent}"></div>
+              <div><label class="editor-label">亩均产值 (outputPerAcre)</label><input type="number" class="editor-input" data-key="outputPerAcre" value="${ind.outputPerAcre}"></div>
+              <div><label class="editor-label">颜色 (color)</label><input type="text" class="editor-input" data-key="color" value="${ind.color}"></div>
+            </div>
+            <div><label class="editor-label">描述 (description)</label><textarea rows="2" class="editor-input" data-key="description">${ind.description}</textarea></div>
+          </div>`;
+      });
+      // 重新绑定删除事件
+      document.querySelectorAll('.editor-list-delete-btn[data-type="industry"]').forEach(btn => {
+          btn.onclick = () => btn.closest('.editor-list-item').remove();
+      });
+    }
+    document.getElementById('editor-add-industry').addEventListener('click', () => {
+      const newIndustry = { key: "new-industry", name: "新产业", percent: 10, color: "#cccccc", outputPerAcre: 0, description: "新产业描述" };
+      const container = document.getElementById('editor-industries-container');
+      const newIndex = container.children.length;
+      const newItem = document.createElement('div');
+      newItem.className = 'editor-list-item';
+      newItem.setAttribute('data-index', newIndex);
+      newItem.innerHTML = `
+          <button class="editor-list-delete-btn" data-type="industry" title="删除此产业">&times;</button>
+          <h3 class="editor-list-item-header">新产业</h3>
+          <div class="editor-grid-3">
+            <div><label class="editor-label">Key (唯一ID, 英文)</label><input type="text" class="editor-input" data-key="key" value="${newIndustry.key}"></div>
+            <div><label class="editor-label">名称 (name)</label><input type="text" class="editor-input" data-key="name" value="${newIndustry.name}"></div>
+            <div><label class="editor-label">默认百分比 (percent)</label><input type="number" class="editor-input" data-key="percent" value="${newIndustry.percent}"></div>
+            <div><label class="editor-label">亩均产值 (outputPerAcre)</label><input type="number" class="editor-input" data-key="outputPerAcre" value="${newIndustry.outputPerAcre}"></div>
+            <div><label class="editor-label">颜色 (color)</label><input type="text" class="editor-input" data-key="color" value="${newIndustry.color}"></div>
+          </div>
+          <div><label class="editor-label">描述 (description)</label><textarea rows="2" class="editor-input" data-key="description">${newIndustry.description}</textarea></div>`;
+      // 绑定新按钮的删除事件
+      newItem.querySelector('.editor-list-delete-btn').onclick = () => newItem.remove();
+      container.appendChild(newItem);
+    });
+    function scrapeEditorList_Industries() {
+      const list = [];
+      document.querySelectorAll('#editor-industries-container .editor-list-item').forEach(item => {
+        list.push({
+          key: item.querySelector('[data-key="key"]').value,
+          name: item.querySelector('[data-key="name"]').value,
+          percent: parseFloat(item.querySelector('[data-key="percent"]').value),
+          color: item.querySelector('[data-key="color"]').value,
+          outputPerAcre: parseFloat(item.querySelector('[data-key="outputPerAcre"]').value),
+          description: item.querySelector('[data-key="description"]').value,
+        });
+      });
+      return list;
+    }
+
+    // --- 本地存储 (Local Storage) & Toast ---
+    function saveConfigToLocal() {
+      try {
+        const configToSave = scrapeConfigFromEditor(); // 从表单刮取数据
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(configToSave));
+        showToast('配置已成功保存到您的浏览器！', 'success');
+      } catch (error) {
+        alert(`保存失败！请先确保所有表单项都正确无误。\n\n错误: ${error.message}`);
+      }
+    }
+    function loadConfigFromLocal() {
+      const savedConfig = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (savedConfig) {
+        if (confirm('找到已保存的配置。是否加载并覆盖当前页面？')) {
+          currentConfig = JSON.parse(savedConfig);
+          runAllRenders(currentConfig);
+          loadConfigIntoEditor(currentConfig); // 重新填充编辑器
+          showToast('已成功加载并应用保存的配置！', 'success');
+        }
+      } else {
+        alert('未在浏览器中找到任何已保存的配置。');
+      }
+    }
+    function resetConfigToDefault() {
+      if (confirm('您确定要重置所有参数为默认值吗？\n这会清除浏览器中保存的配置，并从 config.js 重新加载。')) {
+        localStorage.removeItem(LOCAL_STORAGE_KEY);
+        currentConfig = JSON.parse(JSON.stringify(defaultConfig)); // 从备份中恢复
+        runAllRenders(currentConfig);
+        loadConfigIntoEditor(currentConfig); // 重新填充编辑器
+        showToast('已重置为默认配置。', 'warning');
+      }
+    }
+    function scrapeConfigFromEditor() {
+      // 这是一个汇总函数，调用所有刮取函数
+      return {
+        parkName: document.getElementById('edit-parkName').value,
+        heroDescription: document.getElementById('edit-heroDescription').value,
+        totalAreaAcres: parseFloat(document.getElementById('edit-totalAreaAcres').value),
+        economicFactors: {
+          taxRate: parseFloat(document.getElementById('edit-taxRate').value),
+          jobFactor: parseFloat(document.getElementById('edit-jobFactor').value),
+          supportJobFactor: parseFloat(document.getElementById('edit-supportJobFactor').value),
+          taxTarget: currentConfig.economicFactors.taxTarget, // 保留原目标
+          jobTarget: currentConfig.economicFactors.jobTarget
+        },
+        footer: {
+          tagline: document.getElementById('edit-footer-tagline').value,
+          copyright: document.getElementById('edit-footer-copyright').value
+        },
+        overviewCards: Array.from(document.querySelectorAll('#editor-overview-container .editor-list-item')).map(item => ({
+            title: item.querySelector('[data-key="title"]').value,
+            text: item.querySelector('[data-key="text"]').value
+        })),
+        developmentStages: scrapeEditorList_Stages(),
+        industries: scrapeEditorList_Industries(),
+        industryChildren: JSON.parse(document.getElementById('edit-industryChildren').value)
+      };
+    }
+    function showToast(message, type = 'info') {
+      const toast = document.createElement('div');
+      let bgColor = 'bg-gray-700';
+      if (type === 'success') bgColor = 'bg-green-600';
+      if (type === 'warning') bgColor = 'bg-yellow-600';
+      toast.className = `fixed top-5 right-5 z-[200] p-4 rounded-md text-white ${bgColor} shadow-lg transition-all duration-300 transform translate-x-full`;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      // 动画
+      setTimeout(() => { toast.classList.remove('translate-x-full'); }, 10);
+      setTimeout(() => {
+        toast.classList.add('translate-x-full');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+    
+    // ==========================
+    // === 5. 页面首次加载 ===
+    // ==========================
+    document.addEventListener('DOMContentLoaded', function () {
+      const savedConfig = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (savedConfig) {
+        console.log('检测到本地配置，正在加载...');
+        currentConfig = JSON.parse(savedConfig);
+      } else {
+        console.log('未检测到本地配置，使用 config.js 默认配置。');
+        currentConfig = JSON.parse(JSON.stringify(defaultConfig));
+      }
+      runAllRenders(currentConfig);
+      initializeSmoothScroll();
+    });
+
+    function initializeSmoothScroll() {
+      document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+          e.preventDefault();
+          const targetId = this.getAttribute('href');
+          const targetElement = document.querySelector(targetId);
+          if (targetElement) { window.scrollTo({ top: targetElement.offsetTop - 80, behavior: 'smooth' }); }
+        });
+      });
+    }
+
+  </script>
+
+</body>
+</html>
